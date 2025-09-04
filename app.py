@@ -4,11 +4,18 @@ import matplotlib.pyplot as plt
 
 st.title("💸 Personal Expenses Planner with Insights")
 
-# File uploader
-uploaded_file = st.file_uploader("Upload your expenses CSV", type=["csv"])
+# File uploader (CSV or Excel)
+uploaded_file = st.file_uploader("Upload your expenses file", type=["csv", "xlsx"])
 
 if uploaded_file:
-    df = pd.read_csv(uploaded_file)
+    # Detect file type
+    if uploaded_file.name.endswith(".csv"):
+        df = pd.read_csv(uploaded_file)
+    else:
+        # Handle Excel with multiple sheets
+        xls = pd.ExcelFile(uploaded_file)
+        sheet = st.selectbox("Select a sheet", xls.sheet_names)
+        df = pd.read_excel(uploaded_file, sheet_name=sheet)
 
     # Ensure correct columns
     if "Date" in df.columns and "Category" in df.columns and "Amount" in df.columns:
@@ -21,20 +28,18 @@ if uploaded_file:
         st.metric("Total Expenses", f"₹{total:,.2f}")
 
         # Expenses over time
-        st.subheader("📈 Expenses Over Time")
+        st.subheader("Expenses Over Time")
         time_series = df.groupby("Date")["Amount"].sum()
         st.line_chart(time_series)
 
         # Genre-wise breakdown
-        st.subheader("🍕 Genre-wise Breakdown")
+        st.subheader("Genre-wise Breakdown")
         category_summary = df.groupby("Category")["Amount"].sum().reset_index()
         category_summary["Percentage"] = (category_summary["Amount"] / total) * 100
         st.dataframe(category_summary)
 
-        # =========================
         # Step 1: User-defined budget goals
-        # =========================
-        st.subheader("🎯 Define Your Budget Goals (must sum to 100%)")
+        st.subheader(" Define Your Budget Goals (must sum to 100%)")
         categories = ["Food", "Travel", "Shopping", "Rent", "Entertainment", "Bills"]
 
         inputs = {}
@@ -53,11 +58,9 @@ if uploaded_file:
             proceed = False
         else:
             st.success("✅ Perfect! Your allocations add up to 100%.")
-            proceed = st.button("Proceed to Experiment with Sliders")
+            proceed = st.button("Proceed to Experiment with Sliders and see charts and graphs!")
 
-        # =========================
         # Step 2: Auto-adjust sliders (only if valid input)
-        # =========================
         if proceed:
             if "budget_goals" not in st.session_state:
                 st.session_state.budget_goals = inputs.copy()
@@ -88,11 +91,9 @@ if uploaded_file:
 
             st.write(pd.DataFrame(st.session_state.budget_goals.items(), columns=["Category", "Goal (%)"]))
 
-        # =========================
         # Step 3: Compact comparison
-        # =========================
         if "budget_goals" in st.session_state:
-            st.subheader("📊 Budget vs Actual (Compact View)")
+            st.subheader("Budget vs Actual (Compact View)")
             for _, row in category_summary.iterrows():
                 cat, amt, perc = row["Category"], row["Amount"], row["Percentage"]
                 goal = st.session_state.budget_goals.get(cat, 0)
@@ -105,14 +106,12 @@ if uploaded_file:
                     st.progress(progress_val)
                 with col3:
                     if perc > goal:
-                        st.markdown(f"🚨 {perc:.1f}% vs {goal:.1f}%")
+                        st.markdown(f" {perc:.1f}% vs {goal:.1f}%")
                     else:
-                        st.markdown(f"✅ {perc:.1f}% vs {goal:.1f}%")
+                        st.markdown(f" {perc:.1f}% vs {goal:.1f}%")
 
-            # =========================
             # Step 4: Pie chart comparison
-            # =========================
-            st.subheader("🥧 Budget Goals vs Actual Spending")
+            st.subheader("Budget Goals vs Actual Spending")
 
             fig, axes = plt.subplots(1, 2, figsize=(10, 4))
             axes[0].pie(category_summary["Amount"], labels=category_summary["Category"], autopct="%1.1f%%", startangle=90)
@@ -130,11 +129,11 @@ if uploaded_file:
                 cat, amt, perc = row["Category"], row["Amount"], row["Percentage"]
                 threshold = thresholds.get(cat, 20)
                 if perc > threshold:
-                    st.error(f"🚨 {cat}: {perc:.1f}% of total (above recommended {threshold}%).")
+                    st.error(f"{cat}: {perc:.1f}% of total (above recommended {threshold}%).")
                 else:
-                    st.success(f"✅ {cat}: {perc:.1f}% of total (within recommended {threshold}%).")
+                    st.success(f"{cat}: {perc:.1f}% of total (within recommended {threshold}%).")
 
     else:
-        st.error("CSV must have columns: Date, Category, Amount")
+        st.error("CSV/Excel must have columns: Date, Category, Amount")
 else:
-    st.info("Upload a CSV file to begin (columns: Date, Category, Amount).")
+    st.info("Upload a CSV or Excel file to begin (columns: Date, Category, Amount).")
